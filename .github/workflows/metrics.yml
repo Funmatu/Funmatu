@@ -13,8 +13,8 @@ jobs:
       - name: 📊 GitHub Metrics
         uses: Funmatu/metrics@master
         with:
-          image: ghcr.io/funmatu/metrics:master
-          # use_prebuilt_image: no
+          use_prebuilt_image: yes
+          
           # ─── トークン設定 ───
           # データ取得用（Personal Access Token）
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
