@@ -1,8 +1,9 @@
 name: Metrics
 on:
   schedule:
-    - cron: "10 0 * * *" 
+    - cron: "10 0 * * *"
   workflow_dispatch:
+
 jobs:
   github-metrics:
     runs-on: ubuntu-latest
@@ -12,16 +13,24 @@ jobs:
       - name: 📊 GitHub Metrics
         uses: lowlighter/metrics@latest
         with:
+          # ─── トークン設定 ───
+          # データ取得用（Personal Access Token）
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          
+          # 画像保存用（GitHub Actions標準トークン）
+          committer_token: ${{ secrets.GITHUB_TOKEN }}
+
           # ─── 基本設定 ───
           user: Funmatu
           template: classic
           base: header, activity, community, repositories, metadata
           config_timezone: Asia/Tokyo
-          filename: github-metrics.svg          
+          filename: github-metrics.svg
           debug: no
           plugins_errors_fatal: no
+          
+          # ネットワークエラー対策
+          retries: 3
+          retries_delay: 300
 
           # ─── 1. 言語統計 (Languages) ───
           plugin_lines: yes
@@ -31,25 +40,17 @@ jobs:
 
           # ─── 2. 開発習慣 (Habits) ───
           plugin_habits: yes
-          plugin_habits_from: 200       # デフォルト推奨値
-          plugin_habits_days: 14        # 過去14日間
-          plugin_habits_facts: yes      # 事実データの表示
-          plugin_habits_charts: yes     # グラフの表示
-          plugin_habits_trim: yes       # グラフの平滑化
+          plugin_habits_from: 200
+          plugin_habits_days: 14
+          plugin_habits_facts: yes
+          plugin_habits_charts: yes
+          plugin_habits_trim: yes
 
           # ─── 3. Issue / PR 追跡 (Followup) ───
           plugin_followup: yes
           plugin_followup_sections: repositories
 
-          # ─── 4. GitHub Projects ───
-          # 【注意】Projectsを使っていない、またはトークン権限がないとエラーになります。
-          # 使用していない場合は 'no' にしてください。
-          plugin_projects: no
-          plugin_projects_limit: 4
-
-          # ─── 5. 実績 (Achievements) ───
+          # ─── 4. 実績 (Achievements) ───
           plugin_achievements: yes
           plugin_achievements_display: compact
           plugin_achievements_threshold: B
-          plugin_achievements_ignored: member, maintainer
-          plugin_achievements_secrets: yes
