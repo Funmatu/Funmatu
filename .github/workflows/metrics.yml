@@ -11,7 +11,7 @@ jobs:
       contents: write
     steps:
       - name: 📊 GitHub Metrics
-        uses: lowlighter/metrics@master
+        uses: Funmatu/metrics@master
         with:
           use_prebuilt_image: no
           
