@@ -16,34 +16,33 @@ jobs:
           filename: github-metrics.svg
           base: header, activity, community, repositories, metadata
           config_timezone: Asia/Tokyo
-          
-          # ─── 安定性・デバッグ設定 ───
           plugins_errors_fatal: no
-          debug: yes # エラー時、SVG内に詳細な理由が表示されます
+          debug: yes
           
           # ─── コード行数・言語統計 ───
           plugin_lines: yes
           plugin_languages: yes
           plugin_languages_details: lines, bytes-size, percentage
           
-          # ─── 開発習慣 (Coding Habits) ───
-          # 「Unexpected error」対策としてfactsを有効化
+          # ─── 開発習慣 (Habits) 修正策 ───
           plugin_habits: yes
-          plugin_habits_from: 200
+          plugin_habits_from: 150        # クラッシュを避けるため件数を少し調整
           plugin_habits_days: 14
-          plugin_habits_facts: yes      # 事実（事実ベースの統計）を表示
-          plugin_habits_charts: yes     # グラフを表示
+          plugin_habits_facts: yes
+          plugin_habits_charts: yes
+          plugin_habits_trim: yes        # 無効なデータをトリミング
           
-          # ─── Issue / PR 追跡 (Follow-up) ───
+          # ─── Issue / PR 追跡 ───
           plugin_followup: yes
           plugin_followup_sections: user
           
           # ─── GitHub Projects ───
           plugin_projects: yes
-          plugin_projects_limit: 5
-          
-          # ─── 実績バッジ (Achievements) ───
+          plugin_projects_limit: 4
+
+          # ─── 実績 (Achievements) 修正策 ───
           plugin_achievements: yes
           plugin_achievements_display: compact
-          plugin_achievements_threshold: B # Bランク以上の実績のみ表示（エラー回避に有効）
+          plugin_achievements_threshold: B
+          plugin_achievements_ignored: member, maintainer # プロジェクト権限が絡む実績を無視
           plugin_achievements_secrets: no
