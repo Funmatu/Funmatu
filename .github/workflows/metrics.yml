@@ -9,23 +9,37 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: lowlighter/metrics@latest
+      - uses: lowlighter/metrics@master
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           filename: github-metrics.svg
           base: header, activity, community, repositories, metadata
+          config_timezone: Asia/Tokyo
+          
+          # ─── 安定性・デバッグ設定 ───
+          plugins_errors_fatal: no  # 一部のプラグインでエラーが起きてもSVG全体の生成を止めない
+          debug: yes                # ログに詳細を出力し、SVG内にエラーメッセージを表示する
+          
+          # ─── コード行数・言語統計 ───
           plugin_lines: yes
           plugin_languages: yes
           plugin_languages_details: lines, bytes-size, percentage
+          
+          # ─── 開発習慣 (Coding Habits) ───
           plugin_habits: yes
-          plugin_habits_from: 200
-          plugin_habits_charts: yes
-          plugin_habits_days: 14
+          plugin_habits_from: 200    # 解析対象のイベント数
+          plugin_habits_days: 14     # 過去14日間を分析
+          plugin_habits_charts: yes  # グラフを表示
+          
+          # ─── Issue / PR 追跡 (Follow-up) ───
           plugin_followup: yes
           plugin_followup_sections: user
-          plugin_projects: yes
-          plugin_projects_v2: yes
+          
+          # ─── GitHub Projects (V2対応) ───
+          plugin_projects: no        # 旧Project(Classic)はオフ
+          plugin_projects_v2: yes    # 新Project(V2/テーブル形式)をオン
+          
+          # ─── 実績バッジ (Achievements) ───
           plugin_achievements: yes
           plugin_achievements_display: compact
-          config_timezone: Asia/Tokyo
-          debug: yes
+          plugin_achievements_secrets: no # 安定性を高めるため隠し実績スキャンをオフ
