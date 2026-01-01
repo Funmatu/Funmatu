@@ -41,12 +41,14 @@ jobs:
           # plugin_languages_limit: 8
           plugin_languages: yes
           plugin_languages_indepth: yes
+          commits_authoring: Funmatu, funmatu@gmail.com
           plugin_languages_details: lines, percentage, bytes-size
           plugin_languages_sections: most-used, percentages
-          # plugin_languages_categories: programming
-          plugin_languages_limit: 10
+          plugin_languages_categories: programming
+          plugin_languages_limit: 8
           plugin_languages_analysis_timeout: 15
           plugin_languages_recent_load: 1000
+          plugin_languages_recent_days: 365
 
           # ─── 2. 開発習慣 (Habits) ───
           plugin_habits: yes
