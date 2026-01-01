@@ -54,7 +54,7 @@ jobs:
 
           # ─── 2. 開発習慣 (Habits) ───
           plugin_habits: yes
-          plugin_habits_from: 200
+          plugin_habits_from: 365
           plugin_habits_days: 28
           # factsは詳細なパッチ解析を行いクラッシュの原因になるためOFF
           plugin_habits_facts: no
@@ -68,6 +68,6 @@ jobs:
           # ─── 4. 実績 (Achievements) ───
           plugin_achievements: yes
           plugin_achievements_display: compact
-          plugin_achievements_threshold: C
+          plugin_achievements_threshold: B
           # 廃止されたprojects APIへのアクセスを除外
           plugin_achievements_ignored: projects
