@@ -10,68 +10,105 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: 📊 GitHub Metrics
+      # 1. リポジトリをチェックアウト（現在の画像を取得するため必須）
+      - name: 📂 Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Metricsの生成（一時ファイルに出力、自動コミットはOFF）
+      - name: 📊 Generate GitHub Metrics
         uses: Funmatu/metrics@master
         with:
           use_prebuilt_image: yes
-          
-          # ─── トークン設定 ───
-          # データ取得用（Personal Access Token）
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          # 画像保存用（GitHub Actions標準トークン）
           committer_token: ${{ secrets.GITHUB_TOKEN }}
-
-          # ─── 基本設定 ───
+          
+          # ユーザー設定
           user: Funmatu
           template: classic
           base: header, activity, community, repositories, metadata
-          # repositories_forks: yes
           config_timezone: Asia/Tokyo
-          filename: github-metrics.svg
-          debug: no
-          plugins_errors_fatal: no
           
-          # ネットワークエラー対策
-          retries: 10
+          # 【重要】フェールセーフ設定 1: 一時ファイル名に出力し、ここではコミットしない
+          filename: github-metrics-temp.svg
+          output_action: none 
+          
+          # 【重要】デバッグ用: エラーがあればログに出して処理を止める（検証ステップで拾うため）
+          plugins_errors_fatal: yes
+          debug: yes
+
+          # ネットワーク/タイムアウト対策
+          retries: 5
           retries_delay: 300
 
-          # ─── 1. 言語統計 (Languages) ───
-          # plugin_lines: yes
-          # plugin_languages: yes
-          # plugin_languages_details: lines, bytes-size, percentage
-          # plugin_languages_limit: 8
+          # Languages設定
           plugin_languages: yes
           plugin_languages_ignored: D
           plugin_languages_indepth: yes
-          # plugin_languages_indepth: no
-          # commits_authoring: Funmatu, funmatu@gmail.com
           plugin_languages_details: lines, percentage, bytes-size
-          # plugin_languages_details: bytes-size, percentage
           plugin_languages_sections: most-used
           plugin_languages_categories: programming
           plugin_languages_limit: 8
-          plugin_languages_analysis_timeout: 1500
+          plugin_languages_analysis_timeout: 1200
           plugin_languages_analysis_timeout_repositories: 600
-          # plugin_languages_indepth_custom: Funmatu/gist-aggregation
-          # plugin_languages_recent_load: 1000 # (recently-used section)
-          # plugin_languages_recent_days: 365 # (recently-used section)
 
-          # ─── 2. 開発習慣 (Habits) ───
+          # Habits設定
           plugin_habits: yes
           plugin_habits_from: 365
           plugin_habits_days: 28
-          # factsは詳細なパッチ解析を行いクラッシュの原因になるためOFF
           plugin_habits_facts: no
           plugin_habits_charts: yes
           plugin_habits_trim: yes
 
-          # ─── 3. Issue / PR 追跡 (Followup) ───
+          # Followup設定
           plugin_followup: yes
           plugin_followup_sections: repositories
 
-          # ─── 4. 実績 (Achievements) ───
+          # Achievements設定
           plugin_achievements: yes
           plugin_achievements_display: compact
           plugin_achievements_threshold: B
-          # 廃止されたprojects APIへのアクセスを除外
           plugin_achievements_ignored: projects
+
+      # 3. 【重要】フェールセーフ設定 2: ファイルの検証
+      # 生成されたSVGファイルのサイズを確認します。
+      # 空の画像やエラー時の画像はサイズが小さいため、閾値（ここでは60KB）以下なら失敗とみなします。
+      - name: 🛡️ Verify output
+        run: |
+          echo "Verifying github-metrics-temp.svg..."
+          
+          # ファイルが存在するか確認
+          if [ ! -f "metrics_renders/github-metrics-temp.svg" ]; then
+            echo "Error: File was not generated."
+            exit 1
+          fi
+
+          # ファイルサイズを確認 (バイト単位)
+          FILE_SIZE=$(wc -c < "metrics_renders/github-metrics-temp.svg")
+          echo "Generated file size: $FILE_SIZE bytes"
+
+          # 閾値設定 (例: 60KB = 60000 bytes。通常正常な画像はもっと大きいはず)
+          MIN_SIZE=60000
+          
+          if [ "$FILE_SIZE" -lt "$MIN_SIZE" ]; then
+            echo "Error: File size is too small ($FILE_SIZE bytes). Something went wrong."
+            exit 1
+          fi
+          
+          # 正常であれば、一時ファイルを正式名称に変更してルートディレクトリへ移動
+          mv metrics_renders/github-metrics-temp.svg github-metrics.svg
+          echo "Verification passed."
+
+      # 4. 【重要】フェールセーフ設定 3: 正常な場合のみコミット
+      - name: 🚀 Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # 変更がある場合のみコミット
+          git add github-metrics.svg
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update GitHub Metrics"
+            git push
+          fi
