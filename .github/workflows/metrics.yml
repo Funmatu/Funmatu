@@ -77,13 +77,13 @@ jobs:
           echo "Verifying github-metrics-temp.svg..."
           
           # ファイルが存在するか確認
-          if [ ! -f "/metrics_renders/github-metrics-temp.svg" ]; then
+          if [ ! -f "github-metrics-temp.svg" ]; then
             echo "Error: File was not generated."
             exit 1
           fi
 
           # ファイルサイズを確認 (バイト単位)
-          FILE_SIZE=$(wc -c < "metrics_renders/github-metrics-temp.svg")
+          FILE_SIZE=$(wc -c < "github-metrics-temp.svg")
           echo "Generated file size: $FILE_SIZE bytes"
 
           # 閾値設定 (例: 60KB = 60000 bytes。通常正常な画像はもっと大きいはず)
@@ -95,7 +95,7 @@ jobs:
           fi
           
           # 正常であれば、一時ファイルを正式名称に変更してルートディレクトリへ移動
-          mv /metrics_renders/github-metrics-temp.svg github-metrics.svg
+          mv github-metrics-temp.svg github-metrics.svg
           echo "Verification passed."
 
       # 4. 【重要】フェールセーフ設定 3: 正常な場合のみコミット
