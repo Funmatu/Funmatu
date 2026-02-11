@@ -39,8 +39,6 @@ jobs:
           # ネットワーク/タイムアウト対策
           retries: 10
           retries_delay: 600
-          repositories_batch: 20
-          repositories: 120
 
           # Languages設定
           plugin_languages: yes
