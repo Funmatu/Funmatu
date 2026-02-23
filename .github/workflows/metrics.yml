@@ -92,8 +92,8 @@ jobs:
           FILE_SIZE=$(sudo cat "$SOURCE_FILE" | wc -c)
           echo "Generated file size: $FILE_SIZE bytes"
 
-          # 閾値設定 (50KB)
-          MIN_SIZE=50000
+          # 閾値設定 (60KB)
+          MIN_SIZE=60000
           
           if [ "$FILE_SIZE" -lt "$MIN_SIZE" ]; then
             echo "Error: File size is too small ($FILE_SIZE bytes). Analysis might have failed."
