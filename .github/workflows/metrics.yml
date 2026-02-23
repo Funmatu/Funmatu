@@ -40,7 +40,7 @@ jobs:
           retries: 20
           retries_delay: 600
           repositories: 200
-          repositories_batch: 50
+          repositories_batch: 75
 
           # Languages設定
           plugin_languages: yes
