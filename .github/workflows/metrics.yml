@@ -18,7 +18,7 @@ jobs:
       - name: 📊 Generate GitHub Metrics
         uses: Funmatu/metrics@master
         with:
-          use_prebuilt_image: no
+          use_prebuilt_image: yes
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           committer_token: ${{ secrets.GITHUB_TOKEN }}
           
