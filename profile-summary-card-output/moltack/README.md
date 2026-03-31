@@ -52,13 +52,3 @@
 ```
 
     
-
----
-
-![](./4-productive-time.svg)
-
-```
-![](https://raw.githubusercontent.com/Funmatu/Funmatu/main/profile-summary-card-output/moltack/4-productive-time.svg)
-```
-
-    
