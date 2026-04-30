@@ -54,6 +54,10 @@ jobs:
           retries_delay: 600
           repositories: 200
           repositories_batch: ${{ inputs.repositories_batch || '40' }}
+          # Include forks so the repository count reflects all owned repositories.
+          # languages_indepth still uses commits.authoring to filter to commits by Funmatu only,
+          # so fork-source authors' code does not pollute the language statistics.
+          repositories_forks: yes
 
           # Languages設定
           plugin_languages: yes
@@ -137,6 +141,10 @@ jobs:
           retries_delay: 600
           repositories: 200
           repositories_batch: ${{ inputs.repositories_batch || '40' }}
+          # Include forks so the repository count reflects all owned repositories.
+          # languages_indepth still uses commits.authoring to filter to commits by Funmatu only,
+          # so fork-source authors' code does not pollute the language statistics.
+          repositories_forks: yes
           plugin_languages: yes
           plugin_languages_ignored: D
           plugin_languages_indepth: yes
