@@ -3,10 +3,17 @@ on:
   schedule:
     - cron: "30 1 * * *"
   workflow_dispatch:
+    inputs:
+      repositories_batch:
+        description: "Repositories per GraphQL page (lower = more pages, more stress on retry/pagination paths)"
+        required: false
+        default: "40"
+        type: string
 
 jobs:
   github-metrics:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
@@ -14,33 +21,35 @@ jobs:
       - name: 📂 Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Metricsの生成（一時ファイルに出力、自動コミットはOFF）
-      - name: 📊 Generate GitHub Metrics
-        uses: Funmatu/metrics@master
+      # 2a. Metricsの生成（1回目、失敗しても次へ進む）
+      - name: 📊 Generate GitHub Metrics (attempt 1)
+        id: gen1
+        continue-on-error: true
+        uses: Funmatu/metrics@a971290264ccafdfb115e3c4eb041c2dbc068bc0
         with:
           use_prebuilt_image: yes
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           committer_token: ${{ secrets.GITHUB_TOKEN }}
-          
+
           # ユーザー設定
           user: Funmatu
           template: classic
           base: header, activity, community, repositories, metadata
           config_timezone: Asia/Tokyo
-          
+
           # 【重要】フェールセーフ設定 1: 一時ファイル名に出力し、ここではコミットしない
           filename: github-metrics-temp.svg
-          output_action: none 
-          
+          output_action: none
+
           # 【重要】デバッグ用: エラーがあればログに出して処理を止める（検証ステップで拾うため）
           plugins_errors_fatal: yes
           debug: yes
 
-          # ネットワーク/タイムアウト対策
+          # ネットワーク/タイムアウト対策（fork 内部のリトライと組み合わせて二重化）
           retries: 20
           retries_delay: 600
           repositories: 200
-          repositories_batch: 85
+          repositories_batch: ${{ inputs.repositories_batch || '40' }}
 
           # Languages設定
           plugin_languages: yes
@@ -71,48 +80,123 @@ jobs:
           plugin_achievements_threshold: B
           plugin_achievements_ignored: projects
 
-      # 3. フェールセーフ設定 2: ファイルの検証と移動
-      - name: 🛡️ Verify output
+      # 2b. 出力検証（1回目、失敗しても次へ）
+      - name: 🛡️ Verify output (attempt 1)
+        id: verify1
+        if: steps.gen1.outcome == 'success'
+        continue-on-error: true
         run: |
-          # Dockerが出力した絶対パスを指定します
           SOURCE_FILE="/metrics_renders/github-metrics-temp.svg"
           TARGET_FILE="github-metrics.svg"
+          MIN_SIZE=60000
 
-          echo "Verifying $SOURCE_FILE..."
-          
-          # 1. ファイルが存在するか確認（絶対パスで）
           if [ ! -f "$SOURCE_FILE" ]; then
             echo "Error: File was not generated at $SOURCE_FILE"
-            echo "Debug: Listing /metrics_renders content:"
             ls -la /metrics_renders/ || echo "Directory not found"
             exit 1
           fi
 
-          # 2. ファイルサイズを確認 (sudo catを使用)
-          # Dockerがroot権限で作成するため、読み込みにsudoが必要な場合がある？
           FILE_SIZE=$(sudo cat "$SOURCE_FILE" | wc -c)
           echo "Generated file size: $FILE_SIZE bytes"
 
-          # 閾値設定 (60KB)
-          MIN_SIZE=60000
-          
           if [ "$FILE_SIZE" -lt "$MIN_SIZE" ]; then
             echo "Error: File size is too small ($FILE_SIZE bytes). Analysis might have failed."
             exit 1
           fi
-          
-          # 3. 正常であれば、ワークスペース（現在のフォルダ）に移動
-          # ここでも権限エラーを防ぐため sudo を使う
-          sudo mv "$SOURCE_FILE" "./$TARGET_FILE"
-          echo "Verification passed. File moved to workspace successfully."
 
-      # 4. フェールセーフ設定 3: 正常な場合のみコミット
+          sudo mv "$SOURCE_FILE" "./$TARGET_FILE"
+          echo "Verification passed (attempt 1)."
+
+      # 3a. Metrics生成（2回目、1回目が失敗した場合のみ）
+      - name: 📊 Generate GitHub Metrics (attempt 2)
+        id: gen2
+        if: steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success'
+        continue-on-error: true
+        uses: Funmatu/metrics@a971290264ccafdfb115e3c4eb041c2dbc068bc0
+        with:
+          use_prebuilt_image: yes
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          committer_token: ${{ secrets.GITHUB_TOKEN }}
+          user: Funmatu
+          template: classic
+          base: header, activity, community, repositories, metadata
+          config_timezone: Asia/Tokyo
+          filename: github-metrics-temp.svg
+          output_action: none
+          plugins_errors_fatal: yes
+          debug: yes
+          retries: 20
+          retries_delay: 600
+          repositories: 200
+          repositories_batch: ${{ inputs.repositories_batch || '40' }}
+          plugin_languages: yes
+          plugin_languages_ignored: D
+          plugin_languages_indepth: yes
+          plugin_languages_details: lines, percentage, bytes-size
+          plugin_languages_sections: most-used
+          plugin_languages_categories: programming
+          plugin_languages_limit: 8
+          plugin_languages_analysis_timeout: 1200
+          plugin_languages_analysis_timeout_repositories: 600
+          plugin_habits: yes
+          plugin_habits_from: 365
+          plugin_habits_days: 28
+          plugin_habits_facts: no
+          plugin_habits_charts: yes
+          plugin_habits_trim: yes
+          plugin_followup: yes
+          plugin_followup_sections: repositories
+          plugin_achievements: yes
+          plugin_achievements_display: compact
+          plugin_achievements_threshold: B
+          plugin_achievements_ignored: projects
+
+      # 3b. 出力検証（2回目、これは失敗するとジョブが失敗する fatal 検証）
+      - name: 🛡️ Verify output (attempt 2, fatal)
+        id: verify2
+        if: steps.gen2.conclusion == 'success' && (steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success')
+        run: |
+          SOURCE_FILE="/metrics_renders/github-metrics-temp.svg"
+          TARGET_FILE="github-metrics.svg"
+          MIN_SIZE=60000
+
+          if [ ! -f "$SOURCE_FILE" ]; then
+            echo "Error: File was not generated at $SOURCE_FILE"
+            ls -la /metrics_renders/ || echo "Directory not found"
+            exit 1
+          fi
+
+          FILE_SIZE=$(sudo cat "$SOURCE_FILE" | wc -c)
+          echo "Generated file size: $FILE_SIZE bytes"
+
+          if [ "$FILE_SIZE" -lt "$MIN_SIZE" ]; then
+            echo "Error: File size is too small ($FILE_SIZE bytes). Analysis might have failed after 2 attempts."
+            exit 1
+          fi
+
+          sudo mv "$SOURCE_FILE" "./$TARGET_FILE"
+          echo "Verification passed (attempt 2)."
+
+      # 3c. 1回目で生成自体が失敗していて、2回目もスキップされた／失敗した場合に明示的に失敗させる
+      - name: ❌ Fail if both attempts failed
+        if: |
+          (steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success') &&
+          (steps.gen2.outcome != 'success' || steps.verify2.outcome != 'success')
+        run: |
+          echo "Both metrics generation attempts failed."
+          echo "gen1=${{ steps.gen1.outcome }} verify1=${{ steps.verify1.outcome }}"
+          echo "gen2=${{ steps.gen2.outcome }} verify2=${{ steps.verify2.outcome }}"
+          exit 1
+
+      # 4. 正常な場合のみコミット
       - name: 🚀 Commit and Push
+        if: |
+          (steps.verify1.outcome == 'success') ||
+          (steps.verify2.outcome == 'success')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
-          # 変更がある場合のみコミット
+
           git add github-metrics.svg
           if git diff --cached --quiet; then
             echo "No changes to commit."
