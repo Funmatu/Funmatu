@@ -36,6 +36,10 @@ jobs:
           template: classic
           base: header, activity, community, repositories, metadata
           config_timezone: Asia/Tokyo
+          # Disable SVG animations so puppeteer's resize bounds don't depend on animation timing.
+          # With animations enabled, attempt 1 reliably measured height=489 (57KB) instead of the
+          # full height=706 (68KB), causing every workflow to need a wasted retry attempt.
+          config_animations: no
 
           # 【重要】フェールセーフ設定 1: 一時ファイル名に出力し、ここではコミットしない
           filename: github-metrics-temp.svg
@@ -121,6 +125,10 @@ jobs:
           template: classic
           base: header, activity, community, repositories, metadata
           config_timezone: Asia/Tokyo
+          # Disable SVG animations so puppeteer's resize bounds don't depend on animation timing.
+          # With animations enabled, attempt 1 reliably measured height=489 (57KB) instead of the
+          # full height=706 (68KB), causing every workflow to need a wasted retry attempt.
+          config_animations: no
           filename: github-metrics-temp.svg
           output_action: none
           plugins_errors_fatal: yes
