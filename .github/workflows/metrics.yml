@@ -25,7 +25,7 @@ jobs:
       - name: 📊 Generate GitHub Metrics (attempt 1)
         id: gen1
         continue-on-error: true
-        uses: Funmatu/metrics@e677c0daf3fc5a0d6ede3c088ca8ebc18ebbf720
+        uses: Funmatu/metrics@7431ea099c3caa2fe7f2c848dac848c2965fae57
         with:
           use_prebuilt_image: yes
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -120,7 +120,7 @@ jobs:
         id: gen2
         if: steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success'
         continue-on-error: true
-        uses: Funmatu/metrics@e677c0daf3fc5a0d6ede3c088ca8ebc18ebbf720
+        uses: Funmatu/metrics@7431ea099c3caa2fe7f2c848dac848c2965fae57
         with:
           use_prebuilt_image: yes
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
