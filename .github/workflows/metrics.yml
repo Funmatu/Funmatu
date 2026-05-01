@@ -25,7 +25,7 @@ jobs:
       - name: 📊 Generate GitHub Metrics (attempt 1)
         id: gen1
         continue-on-error: true
-        uses: Funmatu/metrics@a971290264ccafdfb115e3c4eb041c2dbc068bc0
+        uses: Funmatu/metrics@e677c0daf3fc5a0d6ede3c088ca8ebc18ebbf720
         with:
           use_prebuilt_image: yes
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -72,7 +72,7 @@ jobs:
 
           # Habits設定
           plugin_habits: yes
-          plugin_habits_from: 365
+          plugin_habits_from: 1000
           plugin_habits_days: 28
           plugin_habits_facts: no
           plugin_habits_charts: yes
@@ -120,7 +120,7 @@ jobs:
         id: gen2
         if: steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success'
         continue-on-error: true
-        uses: Funmatu/metrics@a971290264ccafdfb115e3c4eb041c2dbc068bc0
+        uses: Funmatu/metrics@e677c0daf3fc5a0d6ede3c088ca8ebc18ebbf720
         with:
           use_prebuilt_image: yes
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -155,7 +155,7 @@ jobs:
           plugin_languages_analysis_timeout: 1200
           plugin_languages_analysis_timeout_repositories: 600
           plugin_habits: yes
-          plugin_habits_from: 365
+          plugin_habits_from: 1000
           plugin_habits_days: 28
           plugin_habits_facts: no
           plugin_habits_charts: yes
