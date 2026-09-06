@@ -13,13 +13,19 @@ on:
 jobs:
   github-metrics:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 2 回の生成試行を収容する。1 回の上限は languages 解析 25 分 + 残りのプラグインと描画で
+    # 約 28 分 (action 内部の retry は下記 retries: 1 で無効化しているので倍加しない)。
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
       # 1. リポジトリをチェックアウト（現在の画像を取得するため必須）
       - name: 📂 Checkout repository
         uses: actions/checkout@v4
+
+      # 1b. 残骸掃除。生成が失敗したときに、前の試行が残した SVG を検証・コミットしないため
+      - name: 🧹 Reset temporary render (attempt 1)
+        run: sudo rm -f /metrics_renders/github-metrics-temp.svg
 
       # 2a. Metricsの生成（1回目、失敗しても次へ進む）
       - name: 📊 Generate GitHub Metrics (attempt 1)
@@ -49,9 +55,12 @@ jobs:
           plugins_errors_fatal: yes
           debug: yes
 
-          # ネットワーク/タイムアウト対策（fork 内部のリトライと組み合わせて二重化）
-          retries: 20
-          retries_delay: 600
+          # action 内部の retry は「描画のみ」ではなく metrics() 全体 (全リポジトリの clone と
+          # 解析を含む) を再実行する (source/app/action/index.mjs の retry ラッパ)。1 回が 15 分超
+          # なので内部で重ねると job の timeout-minutes を必ず超過する。リトライ層はこの
+          # workflow 側の 2 回の生成試行 (attempt 1 / attempt 2) に一本化し、内部は 1 回に固定する。
+          retries: 1
+          retries_delay: 60
           repositories: 200
           repositories_batch: ${{ inputs.repositories_batch || '40' }}
           # Include forks so the repository count reflects all owned repositories.
@@ -67,8 +76,13 @@ jobs:
           plugin_languages_sections: most-used
           plugin_languages_categories: programming
           plugin_languages_limit: 8
-          plugin_languages_analysis_timeout: 1200
-          plugin_languages_analysis_timeout_repositories: 600
+          # 単位は「分」。1200 分 = 20 時間は実質無効化で、1 リポジトリが詰まると job の
+          # timeout-minutes 側で強制終了 = SVG が 1 枚も出ない。実測 (2026-09-03 の成功実行)
+          # では 136 リポジトリの indepth 解析が 12 分 14 秒、最長の単一リポジトリが約 1 分。
+          # 全体 25 分 (実測比 2 倍の余裕、リポジトリ増加分を吸収) / 1 リポジトリ 5 分で打ち切り、
+          # 打ち切り時は job ごと落とさず部分結果として描画させる (SVG に警告行が入る)。
+          plugin_languages_analysis_timeout: 25
+          plugin_languages_analysis_timeout_repositories: 5
 
           # Habits設定
           plugin_habits: yes
@@ -115,6 +129,11 @@ jobs:
           sudo mv "$SOURCE_FILE" "./$TARGET_FILE"
           echo "Verification passed (attempt 1)."
 
+      # 2c. 残骸掃除（1 回目が生成に成功して検証で落ちた場合、そのファイルが残っている）
+      - name: 🧹 Reset temporary render (attempt 2)
+        if: steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success'
+        run: sudo rm -f /metrics_renders/github-metrics-temp.svg
+
       # 3a. Metrics生成（2回目、1回目が失敗した場合のみ）
       - name: 📊 Generate GitHub Metrics (attempt 2)
         id: gen2
@@ -137,8 +156,8 @@ jobs:
           output_action: none
           plugins_errors_fatal: yes
           debug: yes
-          retries: 20
-          retries_delay: 600
+          retries: 1
+          retries_delay: 60
           repositories: 200
           repositories_batch: ${{ inputs.repositories_batch || '40' }}
           # Include forks so the repository count reflects all owned repositories.
@@ -152,8 +171,13 @@ jobs:
           plugin_languages_sections: most-used
           plugin_languages_categories: programming
           plugin_languages_limit: 8
-          plugin_languages_analysis_timeout: 1200
-          plugin_languages_analysis_timeout_repositories: 600
+          # 単位は「分」。1200 分 = 20 時間は実質無効化で、1 リポジトリが詰まると job の
+          # timeout-minutes 側で強制終了 = SVG が 1 枚も出ない。実測 (2026-09-03 の成功実行)
+          # では 136 リポジトリの indepth 解析が 12 分 14 秒、最長の単一リポジトリが約 1 分。
+          # 全体 25 分 (実測比 2 倍の余裕、リポジトリ増加分を吸収) / 1 リポジトリ 5 分で打ち切り、
+          # 打ち切り時は job ごと落とさず部分結果として描画させる (SVG に警告行が入る)。
+          plugin_languages_analysis_timeout: 25
+          plugin_languages_analysis_timeout_repositories: 5
           plugin_habits: yes
           plugin_habits_from: 1000
           plugin_habits_days: 28
@@ -170,7 +194,9 @@ jobs:
       # 3b. 出力検証（2回目、これは失敗するとジョブが失敗する fatal 検証）
       - name: 🛡️ Verify output (attempt 2, fatal)
         id: verify2
-        if: steps.gen2.conclusion == 'success' && (steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success')
+        # continue-on-error: true の step は失敗しても conclusion が success になるため、
+        # 実際の結果を持つ outcome で判定する (conclusion だと gen2 失敗時も検証へ進んでしまう)
+        if: steps.gen2.outcome == 'success' && (steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success')
         run: |
           SOURCE_FILE="/metrics_renders/github-metrics-temp.svg"
           TARGET_FILE="github-metrics.svg"
