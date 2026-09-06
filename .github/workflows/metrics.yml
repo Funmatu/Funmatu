@@ -13,7 +13,9 @@ on:
 jobs:
   github-metrics:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 2 回の生成試行を収容する。1 回の上限は languages 解析 25 分 + 残りのプラグインと描画で
+    # 約 28 分 (action 内部の retry は下記 retries: 1 で無効化しているので倍加しない)。
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
@@ -49,9 +51,12 @@ jobs:
           plugins_errors_fatal: yes
           debug: yes
 
-          # ネットワーク/タイムアウト対策（fork 内部のリトライと組み合わせて二重化）
-          retries: 20
-          retries_delay: 600
+          # action 内部の retry は「描画のみ」ではなく metrics() 全体 (全リポジトリの clone と
+          # 解析を含む) を再実行する (source/app/action/index.mjs の retry ラッパ)。1 回が 15 分超
+          # なので内部で重ねると job の timeout-minutes を必ず超過する。リトライ層はこの
+          # workflow 側の 2 回の生成試行 (attempt 1 / attempt 2) に一本化し、内部は 1 回に固定する。
+          retries: 1
+          retries_delay: 60
           repositories: 200
           repositories_batch: ${{ inputs.repositories_batch || '40' }}
           # Include forks so the repository count reflects all owned repositories.
@@ -67,8 +72,13 @@ jobs:
           plugin_languages_sections: most-used
           plugin_languages_categories: programming
           plugin_languages_limit: 8
-          plugin_languages_analysis_timeout: 1200
-          plugin_languages_analysis_timeout_repositories: 600
+          # 単位は「分」。1200 分 = 20 時間は実質無効化で、1 リポジトリが詰まると job の
+          # timeout-minutes 側で強制終了 = SVG が 1 枚も出ない。実測 (2026-09-03 の成功実行)
+          # では 136 リポジトリの indepth 解析が 12 分 14 秒、最長の単一リポジトリが約 1 分。
+          # 全体 25 分 (実測比 2 倍の余裕、リポジトリ増加分を吸収) / 1 リポジトリ 5 分で打ち切り、
+          # 打ち切り時は job ごと落とさず部分結果として描画させる (SVG に警告行が入る)。
+          plugin_languages_analysis_timeout: 25
+          plugin_languages_analysis_timeout_repositories: 5
 
           # Habits設定
           plugin_habits: yes
@@ -137,8 +147,8 @@ jobs:
           output_action: none
           plugins_errors_fatal: yes
           debug: yes
-          retries: 20
-          retries_delay: 600
+          retries: 1
+          retries_delay: 60
           repositories: 200
           repositories_batch: ${{ inputs.repositories_batch || '40' }}
           # Include forks so the repository count reflects all owned repositories.
@@ -152,8 +162,13 @@ jobs:
           plugin_languages_sections: most-used
           plugin_languages_categories: programming
           plugin_languages_limit: 8
-          plugin_languages_analysis_timeout: 1200
-          plugin_languages_analysis_timeout_repositories: 600
+          # 単位は「分」。1200 分 = 20 時間は実質無効化で、1 リポジトリが詰まると job の
+          # timeout-minutes 側で強制終了 = SVG が 1 枚も出ない。実測 (2026-09-03 の成功実行)
+          # では 136 リポジトリの indepth 解析が 12 分 14 秒、最長の単一リポジトリが約 1 分。
+          # 全体 25 分 (実測比 2 倍の余裕、リポジトリ増加分を吸収) / 1 リポジトリ 5 分で打ち切り、
+          # 打ち切り時は job ごと落とさず部分結果として描画させる (SVG に警告行が入る)。
+          plugin_languages_analysis_timeout: 25
+          plugin_languages_analysis_timeout_repositories: 5
           plugin_habits: yes
           plugin_habits_from: 1000
           plugin_habits_days: 28
