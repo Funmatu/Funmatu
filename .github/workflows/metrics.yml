@@ -23,6 +23,10 @@ jobs:
       - name: 📂 Checkout repository
         uses: actions/checkout@v4
 
+      # 1b. 残骸掃除。生成が失敗したときに、前の試行が残した SVG を検証・コミットしないため
+      - name: 🧹 Reset temporary render (attempt 1)
+        run: sudo rm -f /metrics_renders/github-metrics-temp.svg
+
       # 2a. Metricsの生成（1回目、失敗しても次へ進む）
       - name: 📊 Generate GitHub Metrics (attempt 1)
         id: gen1
@@ -125,6 +129,11 @@ jobs:
           sudo mv "$SOURCE_FILE" "./$TARGET_FILE"
           echo "Verification passed (attempt 1)."
 
+      # 2c. 残骸掃除（1 回目が生成に成功して検証で落ちた場合、そのファイルが残っている）
+      - name: 🧹 Reset temporary render (attempt 2)
+        if: steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success'
+        run: sudo rm -f /metrics_renders/github-metrics-temp.svg
+
       # 3a. Metrics生成（2回目、1回目が失敗した場合のみ）
       - name: 📊 Generate GitHub Metrics (attempt 2)
         id: gen2
@@ -185,7 +194,9 @@ jobs:
       # 3b. 出力検証（2回目、これは失敗するとジョブが失敗する fatal 検証）
       - name: 🛡️ Verify output (attempt 2, fatal)
         id: verify2
-        if: steps.gen2.conclusion == 'success' && (steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success')
+        # continue-on-error: true の step は失敗しても conclusion が success になるため、
+        # 実際の結果を持つ outcome で判定する (conclusion だと gen2 失敗時も検証へ進んでしまう)
+        if: steps.gen2.outcome == 'success' && (steps.gen1.outcome != 'success' || steps.verify1.outcome != 'success')
         run: |
           SOURCE_FILE="/metrics_renders/github-metrics-temp.svg"
           TARGET_FILE="github-metrics.svg"
